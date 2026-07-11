@@ -9,6 +9,7 @@ import { redirect } from "next/navigation";
 import connectDB from "@/lib/db";
 //The adapter connects Better Auth with MongoDB so user data can be stored in the database.
 import { mongodbAdapter } from "better-auth/adapters/mongodb";
+import { initializeUserBoard } from "../init-user-board";
 const mongooseInstance = await connectDB();
 const client = mongooseInstance.connection.getClient();
 const db = client.db();
@@ -20,6 +21,17 @@ export const auth = betterAuth({
   }),
   emailAndPassword: {
     enabled: true,
+  },
+  databaseHooks: {
+    user: {
+      create: {
+        after: async (user) => {
+          if (user.id) {
+            await initializeUserBoard(user.id);
+          }
+        },
+      },
+    },
   },
 });
 
