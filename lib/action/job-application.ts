@@ -95,6 +95,8 @@ export async function createJobApplication(data: JobApplicationData) {
   return { data: JSON.parse(JSON.stringify(jobApplication)) };
 }
 
+
+//This function updates a job application, verifies user permission, handles moving jobs between Kanban columns, manages ordering, and saves the changes to the database.
 export async function updateJobApplication(
   id: string,
   updates: {
@@ -122,10 +124,13 @@ export async function updateJobApplication(
     return { error: "Job application not found" };
   }
 
+  //Makes sure the logged-in user owns this job application.
   if (jobApplication.userId !== session.user.id) {
     return { error: "Unauthorized" };
   }
 
+  //This line uses JavaScript destructuring with the rest operator.
+  //It takes the updates object and separates it into three parts: columnId,order and Everything else → stored in otherUpdates
   const { columnId, order, ...otherUpdates } = updates;
 
   const updatesToApply: Partial<{
@@ -144,33 +149,42 @@ export async function updateJobApplication(
   const currentColumnId = jobApplication.columnId.toString();
   const newColumnId = columnId?.toString();
 
+  //Check if the card is moving to another column
   const isMovingToDifferentColumn =
-    newColumnId && newColumnId !== currentColumnId;
+    newColumnId && newColumnId !== currentColumnId; //If the newColumnId is not null then is the newColumnId is different from the currentColumnId.
 
+    //Remove from old column
   if (isMovingToDifferentColumn) {
     await Column.findByIdAndUpdate(currentColumnId, {
       $pull: { jobApplications: id },
     });
 
+    //Gets all jobs already in the new column. Calculates them.
     const jobsInTargetColumn = await JobApplication.find({
       columnId: newColumnId,
-      _id: { $ne: id },
+      _id: { $ne: id }, //"Find jobs in this column, but exclude the current job."
     })
-      .sort({ order: 1 })
-      .lean();
+      .sort({ order: 1 })//It sorts jobs by order from small to large.
+      .lean(); //The lean() method is used to return plain JavaScript objects instead of Mongoose documents, It is faster when you only need to read data.
 
     let newOrderValue: number;
 
+    //Did the user tell us where to place the card?
     if (order !== undefined && order !== null) {
-      newOrderValue = order * 100;
+      newOrderValue = order * 100; //We multiply by 100 to leave space for future insertions between jobs.This makes inserting easier.
 
-      const jobsThatNeedToShift = jobsInTargetColumn.slice(order);
+      //This line creates a new array containing all jobs in the target column that come after the specified order. These jobs will need to have their order values adjusted to make room for the moved job.,
+      //slice() takes items from that position onward.
+      const jobsThatNeedToShift = jobsInTargetColumn.slice(order); 
       for (const job of jobsThatNeedToShift) {
         await JobApplication.findByIdAndUpdate(job._id, {
-          $set: { order: job.order + 100 },
+          $set: { order: job.order + 100 },//We add 100 to their order to move them down and make space for the moved job.
         });
       }
-    } else {
+      
+    }
+    //If the user didn't specify an order, we place the job at the end of the column. 
+    else {
       if (jobsInTargetColumn.length > 0) {
         const lastJobOrder =
           jobsInTargetColumn[jobsInTargetColumn.length - 1].order || 0;
@@ -180,6 +194,7 @@ export async function updateJobApplication(
       }
     }
 
+    //Add to new column
     updatesToApply.columnId = newColumnId;
     updatesToApply.order = newOrderValue;
 
@@ -225,7 +240,7 @@ export async function updateJobApplication(
 
     updatesToApply.order = newOrderValue;
   }
-
+//Update the job application
   const updated = await JobApplication.findByIdAndUpdate(id, updatesToApply, {
     new: true,
   });
@@ -261,3 +276,194 @@ export async function deleteJobApplication(id: string) {
 
   return { success: true };
 }
+
+// ===============================
+// INTERVIEW QUESTIONS & EXPLANATIONS
+// ===============================
+
+/*
+
+Q1: Explain this code / functionality.
+
+Answer:
+This code implements CRUD operations for job applications.
+It allows users to create, update, and delete job applications.
+It verifies authentication, checks user ownership, updates MongoDB
+using Mongoose, manages Kanban column movement, and handles ordering.
+
+
+
+Q2: Why did you use "use server" in this file?
+
+Answer:
+"use server" makes these functions run only on the server side.
+It allows secure access to databases, authentication,
+environment variables, and server-side operations.
+
+
+
+Q3: What are Server Actions in Next.js?
+
+Answer:
+Server Actions are server-side functions that can be called
+directly from React components.
+They are mainly used for database operations like:
+- Creating data
+- Updating data
+- Deleting data
+
+
+
+Q4: Explain the flow of createJobApplication()
+
+Answer:
+1. Check whether the user is logged in.
+2. Connect to MongoDB.
+3. Validate required fields.
+4. Verify that the board belongs to the user.
+5. Verify that the column belongs to the board.
+6. Create the job application.
+7. Add the job ID to the column.
+8. Refresh dashboard data.
+
+
+
+Q5: Why do you check userId before updating or deleting?
+
+Example:
+if (jobApplication.userId !== session.user.id)
+
+Answer:
+This is an authorization check.
+It ensures users can only modify their own job applications.
+Without this, users could access other users' data.
+
+
+
+Q6: Difference between Authentication and Authorization?
+
+Authentication:
+Checks who the user is.
+Example: Login with email and password.
+
+Authorization:
+Checks what the user can access.
+Example: User can only edit their own job applications.
+
+
+
+Q7: Explain moving a job card between Kanban columns.
+
+Answer:
+When moving a card:
+1. Remove the job ID from the old column using $pull.
+2. Calculate the new order position.
+3. Update the columnId.
+4. Add the job ID to the new column using $push.
+5. Update the order of other cards.
+
+
+
+Q8: What are $push and $pull in MongoDB?
+
+$push:
+Adds a value into an array.
+
+Example:
+Before:
+jobApplications: [1,2]
+
+After:
+jobApplications: [1,2,3]
+
+
+$pull:
+Removes a value from an array.
+
+Example:
+Before:
+jobApplications: [1,2,3]
+
+After:
+jobApplications: [1,3]
+
+
+
+Q9: Why use async/await?
+
+Answer:
+Database operations are asynchronous.
+async/await allows us to wait for database responses
+and write cleaner asynchronous code.
+
+Example:
+
+const job = await JobApplication.findById(id);
+
+
+
+Q10: Explain the ordering logic.
+
+Answer:
+Each job has an order value.
+The application uses order values like:
+
+Google  -> 0
+Amazon  -> 100
+Netflix -> 200
+
+Multiplying by 100 creates gaps between items.
+When inserting a card, existing cards are shifted
+by adding 100 to their order value.
+
+
+
+===============================
+Additional Possible Questions
+===============================
+
+
+Q11: What is Mongoose?
+
+Answer:
+Mongoose is an ODM (Object Data Modeling) library for MongoDB.
+It allows us to create schemas, validate data,
+and interact with MongoDB using JavaScript objects.
+
+
+
+Q12: What does .lean() do?
+
+Answer:
+.lean() returns normal JavaScript objects instead of
+full Mongoose documents.
+It improves performance when we only need to read data.
+
+
+
+Q13: What does revalidatePath() do?
+
+Answer:
+It tells Next.js to refresh cached data for a specific route.
+
+Example:
+revalidatePath("/dashboard");
+
+
+
+Q14: Why use MongoDB instead of SQL?
+
+Answer:
+MongoDB is document-based and stores JSON-like data.
+It provides flexible schemas and works well with
+JavaScript applications.
+
+
+
+Q15: What happens if database update fails halfway?
+
+Answer:
+Multiple operations may become inconsistent.
+A better solution is using MongoDB transactions
+so all operations succeed or fail together.
+*/

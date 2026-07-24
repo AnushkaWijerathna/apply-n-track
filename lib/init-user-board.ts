@@ -39,7 +39,7 @@ export async function initializeUserBoard(userId: string) {
           name: col.name,
           order: col.order,
           boardId: board._id,
-          jobApplication: [],
+          jobApplications: [],
         }),
       ),
     );
@@ -47,6 +47,8 @@ export async function initializeUserBoard(userId: string) {
     // Update the board with the new column IDs
     board.columns = columns.map((col) => col._id);
     await board.save();
+
+    return board;
   } catch (error) {
     throw error;
   }

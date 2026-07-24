@@ -19,6 +19,14 @@ export const auth = betterAuth({
   database: mongodbAdapter(db, {
     client,
   }),
+  //This code enables session cookie caching. 
+  // It stores session information in a cookie to make the application faster, and the cookie remains valid for 1 hour before it expires.
+  session: {
+    cookieCache: {
+      enabled: true,
+      maxAge: 60 * 60,
+    },
+  },
   emailAndPassword: {
     enabled: true,
   },
