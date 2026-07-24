@@ -1,30 +1,47 @@
-import KanbanBoard from "@/components/kanban-board";
 import { getSession } from "@/lib/auth/auth";
 import connectDB from "@/lib/db";
 import { Board } from "@/lib/models";
 import { redirect } from "next/navigation";
+import KanbanBoard from "@/components/kanban-board";
+import { Suspense } from "react";
 
-export default async function Dashboard() {
-  const session = await getSession();
-
-  if (!session?.user) {
-    redirect("/sign-in");
-  }
-  //Gets the dashboard data from the database and displays it in the dashboard page.
+    //Gets the dashboard data from the database and displays it in the dashboard page.
   // The dashboard page is a server component that is rendered on the server side and sent to the client as HTML.
   // This allows for better performance and SEO, as the page is rendered on the server and sent to the client as HTML, rather than being rendered on the client side using JavaScript,
   // Also since this is a server component, it can access the database directly without needing to go through an API route, which makes it faster and more efficient.
 
+async function getBoard(userId: string) {
+  "use cache";
+
   await connectDB();
 
-  const board = await Board.findOne({
-    userId : session.user.id,
-    name :"Job hunt"
+  const boardDoc = await Board.findOne({
+    userId: userId,
+    name: "Job Hunt",
   }).populate({
-    path:"columns",
-  })
+    path: "columns",
+    populate: {
+      path: "jobApplications",
+    },
+  });
 
- return (
+  if (!boardDoc) return null;
+
+  const board = JSON.parse(JSON.stringify(boardDoc));
+
+  return board;
+}
+
+async function DashboardPage() {
+
+  const session = await getSession();
+  const board = await getBoard(session?.user.id ?? "");
+
+  if (!session?.user) {
+    redirect("/sign-in");
+  }
+
+  return (
     <div className="min-h-screen bg-white">
       <div className="container mx-auto p-6">
         <div className="mb-6">
@@ -34,5 +51,13 @@ export default async function Dashboard() {
         <KanbanBoard board={board} userId={session.user.id} />
       </div>
     </div>
+  );
+}
+
+export default async function Dashboard() {
+  return (
+    <Suspense fallback={<p>Loading...</p>}>
+      <DashboardPage />
+    </Suspense>
   );
 }

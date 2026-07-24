@@ -20,7 +20,6 @@ import {
 } from "./ui/dropdown-menu";
 import { Button } from "./ui/button";
 
-import JobApplicationCard from "./job-application-card";
 import { useBoard } from "@/lib/hooks/useBoards";
 import {
   closestCorners,
@@ -41,6 +40,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { useState } from "react";
 import CreateJobApplicationDialog from "./create-job-dialog";
+import JobApplicationCard from "./job-application-card";
 
 interface KanbanBoardProps {
   board: Board;
