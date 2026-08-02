@@ -313,6 +313,7 @@ export default function KanbanBoard({ board, userId }: KanbanBoardProps) {
     .find((job) => job._id === activeId);
   return (
     <DndContext
+      id={`kanban-board-${board._id}`}
       sensors={sensors}
       collisionDetection={closestCorners}
       onDragStart={handleDragStart}
