@@ -12,7 +12,7 @@ export default function Home() {
         <section className="container mx-auto px-4 py-32">
           <div className="mx-auto max-w-4xl text-center">
             <h1 className="text-5xl mb-6 font-bold text-primary">
-              Welcome to Apply n Track
+              Welcome to Apply & Track
             </h1>
             <p className="mb-8 text-xl text-muted-foreground">
               Your ultimate job application tracker.

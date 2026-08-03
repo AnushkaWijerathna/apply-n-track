@@ -42,11 +42,22 @@ async function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="container mx-auto p-6">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-black">Job Hunt</h1>
-          <p className="text-gray-600">Track your job applications</p>
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.08),_transparent_36%),linear-gradient(180deg,_#f8fafc_0%,_#ffffff_100%)]">
+      <div className="container mx-auto px-4 py-6 sm:px-6 lg:px-8">
+        <div className="mb-6 rounded-3xl border border-border/70 bg-white/85 p-6 shadow-sm backdrop-blur-sm sm:p-8">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-2xl space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-muted-foreground text-center">
+                Job application tracker
+              </p>
+              <h1 className="text-4xl font-semibold tracking-tight text-foreground sm:text-5xl text-center">
+                Job Hunt
+              </h1>
+              <p className="max-w-xl text-sm leading-6 text-muted-foreground sm:text-base text-center">
+                Track applications, move them through your pipeline, and find the right role faster.
+              </p>
+            </div>
+          </div>
         </div>
         <KanbanBoard board={board} userId={session.user.id} />
       </div>

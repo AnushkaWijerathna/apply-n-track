@@ -79,8 +79,8 @@ export default function Navbar() {
                     className="relative h-8 w-8 rounded-full"
                   >
                     <Avatar className="h-8 w-8">
-                      <AvatarFallback className="bg-primary text-white">
-                        + {session.user.name?.[0]?.toUpperCase() ?? "?"}+{" "}
+                      <AvatarFallback className="bg-primary text-sm font-semibold text-white">
+                        {session.user.name?.[0]?.toUpperCase() ?? "?"}
                       </AvatarFallback>
                     </Avatar>
                   </Button>

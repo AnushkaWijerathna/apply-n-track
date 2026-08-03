@@ -6,7 +6,6 @@ import {
   Calendar,
   CheckCircle2,
   Mic,
-  MoreHorizontal,
   MoreVertical,
   Trash2,
   XCircle,
@@ -38,9 +37,10 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import CreateJobApplicationDialog from "./create-job-dialog";
 import JobApplicationCard from "./job-application-card";
+import JobSearchBar from "./job-search-bar";
 
 interface KanbanBoardProps {
   board: Board;
@@ -84,11 +84,13 @@ function DroppableColumn({
   config,
   boardId,
   sortedColumns,
+  searchActive,
 }: {
   column: Column;
   config: ColConfig;
   boardId: string;
   sortedColumns: Column[];
+  searchActive: boolean;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: column._id,
@@ -97,9 +99,9 @@ function DroppableColumn({
       columnId: column._id,
     },
   });
-
-  const sortedJobs =
-    column.jobApplications?.sort((a, b) => a.order - b.order) || [];
+  const sortedJobs = [...(column.jobApplications || [])].sort(
+    (a, b) => a.order - b.order,
+  );
   return (
     <Card className="min-w-[300px] flex-shrink-0 shadow-md p-0">
       <CardHeader
@@ -142,13 +144,19 @@ function DroppableColumn({
           items={sortedJobs.map((job) => job._id)}
           strategy={verticalListSortingStrategy}
         >
-          {sortedJobs.map((job, key) => (
-            <SortableJobCard
-              key={key}
-              job={{ ...job, columnId: job.columnId || column._id }}
-              columns={sortedColumns}
-            />
-          ))}
+          {sortedJobs.length > 0 ? (
+            sortedJobs.map((job) => (
+              <SortableJobCard
+                key={job._id}
+                job={{ ...job, columnId: job.columnId || column._id }}
+                columns={sortedColumns}
+              />
+            ))
+          ) : searchActive ? (
+            <div className="rounded-lg border border-dashed border-border bg-background px-3 py-4 text-center text-sm text-muted-foreground">
+              No matches
+            </div>
+          ) : null}
         </SortableContext>
 
         <CreateJobApplicationDialog columnId={column._id} boardId={boardId} />
@@ -195,11 +203,45 @@ function SortableJobCard({
   );
 }
 
-export default function KanbanBoard({ board, userId }: KanbanBoardProps) {
+export default function KanbanBoard({ board }: KanbanBoardProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [searchInput, setSearchInput] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
   const { columns, moveJob } = useBoard(board);
 
-  const sortedColumns = columns?.sort((a, b) => a.order - b.order) || [];
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setSearchTerm(searchInput.trim());
+    }, 200);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [searchInput]);
+
+  const sortedColumns = useMemo(
+    () => [...(columns || [])].sort((a, b) => a.order - b.order),
+    [columns],
+  );
+
+  const filteredColumns = useMemo(() => {
+    if (!searchTerm) {
+      return sortedColumns;
+    }
+
+    const normalizedSearch = searchTerm.toLowerCase();
+
+    return sortedColumns.map((column) => ({
+      ...column,
+      jobApplications: (column.jobApplications || []).filter((job) => {
+        const company = job.company?.toLowerCase() || "";
+        const position = job.position?.toLowerCase() || "";
+
+        return (
+          company.includes(normalizedSearch) ||
+          position.includes(normalizedSearch)
+        );
+      }),
+    }));
+  }, [searchTerm, sortedColumns]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -320,19 +362,30 @@ export default function KanbanBoard({ board, userId }: KanbanBoardProps) {
       onDragEnd={handleDragEnd}
     >
       <div className="space-y-4">
-        <div className="flex gap-4 overflow-x-auto pb-4">
-          {sortedColumns.map((col, key) => {
-            const config = COLUMN_CONFIG[key] || {
+        <div className="flex justify-center px-1">
+          <JobSearchBar
+            value={searchInput}
+            onChange={setSearchInput}
+            onClear={() => {
+              setSearchInput("");
+              setSearchTerm("");
+            }}
+          />
+        </div>
+        <div className="flex gap-4 overflow-x-auto pb-4 pt-1">
+          {filteredColumns.map((col, index) => {
+            const config = COLUMN_CONFIG[index] || {
               color: "bg-gray-500",
               icon: <Calendar className="h-4 w-4" />,
             };
             return (
               <DroppableColumn
-                key={key}
+                key={col._id}
                 column={col}
                 config={config}
                 boardId={board._id}
                 sortedColumns={sortedColumns}
+                searchActive={searchTerm.length > 0}
               />
             );
           })}
